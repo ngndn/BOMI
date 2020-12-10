@@ -6,6 +6,7 @@ from scipy.stats import wishart
 from joblib import Parallel, delayed
 import multiprocessing
 
+
 class MF():
 
     def __init__(self, R, K, alpha, beta, iterations):
@@ -101,10 +102,11 @@ class MF():
         """
         return self.b + self.b_u[:, np.newaxis] + self.b_i[np.newaxis:, ] + self.P.dot(self.Q.T)
 
+
 class PMF(object):
-    '''
+    """
     Probabilistic Matrix Factorization
-    '''
+    """
 
     def __init__(self, n_feature, epsilon, lam, n_epoches, n_batches):
         self.n_feature = n_feature  # number of features
@@ -118,9 +120,9 @@ class PMF(object):
         self.U = None  # users feature matrix
 
     def loss(self, ratings):
-        '''
+        """
         Loss Function for evaluating matrix U and V
-        '''
+        """
         errors = [
             (float(r_ij) - np.dot(self.U[int(i)], self.V[int(j)].T)) ** 2 + \
             self.lam * norm(self.U[int(i)]) + self.lam * norm(self.V[int(j)])
@@ -135,9 +137,9 @@ class PMF(object):
         return sum(errors)
 
     def sgd_update(self, ratings):
-        '''
+        """
         Update matrix U and V by Stochastic Gradient Descent.
-        '''
+        """
         # print(self.U)
         # print(self.V.shape)
         # for i in range(len(ratings)):
@@ -183,7 +185,7 @@ class PMF(object):
 
 
     def fit(self, train_ratings, test_ratings):
-        '''
+        """
         Fit PMF model with respect to the ratings. A rating is a triple (user,
         item, rating), in particular, user and item are integers to indicate
         unique ids respectively, and rating is a real value score that associates
@@ -192,7 +194,7 @@ class PMF(object):
         Params:
         - train_ratings: ratings entries for training purpose
         - test_ratings:  ratings entries for testing purpose
-        '''
+        """
         # get number of training samples and testing samples
         # n_trains = train_ratings.shape[0]
         # n_tests = test_ratings.shape[0]
@@ -261,6 +263,7 @@ class PMF(object):
             # print('Testing loss:\t%f' % avg_test_loss, file=sys.stderr)
             loss_arr.append(avg_train_loss)
 
+
 def Normal_Wishart(mu_0, lamb, W, nu, seed=None):
     """Function extracting a Normal_Wishart random variable"""
     # first draw a Wishart distribution:
@@ -269,6 +272,7 @@ def Normal_Wishart(mu_0, lamb, W, nu, seed=None):
     cov = np.linalg.inv(lamb * Lambda)  # this is the bottleneck!!
     mu = multivariate_normal(mu_0, cov)
     return mu, Lambda, cov
+
 
 def reduce_matrix(N_max, M_max, filename, correspondence_list_users, correspondence_list_movies, sep=" "):
     """In some datasets, the movies and users have a certain identifier that corresponds to one
@@ -293,6 +297,7 @@ def reduce_matrix(N_max, M_max, filename, correspondence_list_users, corresponde
 
     return R_reduced
 
+
 def ranking_matrix(N, M, filename, sep=" "):
     """Function creating the NxM rating matrix from filename.
     It assumes that the file contains on every line a triple (user, movie, ranking).
@@ -307,6 +312,7 @@ def ranking_matrix(N, M, filename, sep=" "):
         (user, movie, ranking) = line.split(sep)
         R[np.int(user) - 1, np.int(movie) - 1] = np.int(ranking)
     return R
+
 
 def read_correspondence_list(filename):
     """Function reading the correspondence list from a -mtx file "filename"""
