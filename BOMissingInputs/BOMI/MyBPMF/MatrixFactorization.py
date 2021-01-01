@@ -7,7 +7,7 @@ from joblib import Parallel, delayed
 import multiprocessing
 
 
-class MF():
+class MF:
 
     def __init__(self, R, K, alpha, beta, iterations):
         """

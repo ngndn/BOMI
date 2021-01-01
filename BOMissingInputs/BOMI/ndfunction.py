@@ -1,6 +1,7 @@
 import numpy as np
 
-from BOMI.Space import Space
+from Space import Space
+
 
 class SyntheticFunction():
     def __init__(self, dim):
@@ -330,4 +331,3 @@ class Schwefel_Nd(SyntheticFunction):
             sum = sum + xi * np.sin(np.sqrt(abs(xi)))
         fx = 418.9829 * d - sum
         return fx * self.ismax, missingX
-

@@ -1,23 +1,24 @@
-import torch
-import gpytorch
+import sys
 import time
 import math
-import datetime
 import pickle
-import sys
-parent_folder = 'C:\Deakin\pluong\BOMissingInputs' # Path to the project's root
-sys.path.append(parent_folder)
+import datetime
 
+import torch
+import gpytorch
 import pandas as pd
-from BOMI.BOGPyTorch.GPTmodels import ExactGPModel
 from scipy.stats import mode
-
-from BOMI.MyBPMF.MatrixFactorization import myBPMF
-from BOMI.ndfunction import *
-
+from missingpy import KNNImputer
 from sklearn.neighbors import KernelDensity
 
-from missingpy import KNNImputer
+from ndfunction import *
+from MyBPMF.MatrixFactorization import myBPMF
+from BOGPyTorch.GPTmodels import ExactGPModel
+
+parent_folder = \
+    '/Users/nadan/google-drive/0-data/aalto/thesis/bayesian-optimization/software/BOMI/BOMissingInputs'
+sys.path.append(parent_folder)
+
 
 mySeed = 9
 np.random.seed(mySeed)
