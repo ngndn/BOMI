@@ -13,5 +13,5 @@ class ExactGPModel(gpytorch.models.ExactGP):
         covar_x = self.covar_module(x)
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
-    def setCovModule(self, inputModule):
-        self.covar_module = inputModule
+    def set_cov_module(self, input_module):
+        self.covar_module = input_module

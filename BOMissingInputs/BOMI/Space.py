@@ -6,10 +6,10 @@ class Space:
         self.valueSet = []
 
     # If values are not uniformly spaced then we need to define
-    def setValuesSet(self, arrValues):
-        self.valueSet = arrValues
+    def set_values_set(self, arr_values):
+        self.valueSet = arr_values
 
-    def getCeil(self, val):
+    def get_ceil(self, val):
         result = val
         if val in self.valueSet:
             return val
@@ -19,7 +19,7 @@ class Space:
                 break
         return result
 
-    def getFloor(self, val):
+    def get_floor(self, val):
         result = val
         if val in self.valueSet:
             return val

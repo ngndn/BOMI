@@ -8,7 +8,6 @@ import multiprocessing
 
 
 class MF:
-
     def __init__(self, R, K, alpha, beta, iterations):
         """
         Perform matrix factorization to predict empty
@@ -161,7 +160,7 @@ class PMF(object):
             self.U[i] = self.U[i] - self.epsilon * grad_U_i
             self.V[j] = self.V[j] - self.epsilon * grad_V_j
 
-    def sgd(self,ratings):
+    def sgd(self, ratings):
         """
         Perform stochastic graident descent
         """
@@ -182,7 +181,6 @@ class PMF(object):
             # Update user and item latent feature matrices
             self.U[i, :] += self.epsilon * (e * self.U[j, :] - self.lam * self.U[i, :])
             self.V[j, :] += self.epsilon * (e * P_i - self.lam * self.V[j, :])
-
 
     def fit(self, train_ratings, test_ratings):
         """
@@ -264,7 +262,7 @@ class PMF(object):
             loss_arr.append(avg_train_loss)
 
 
-def Normal_Wishart(mu_0, lamb, W, nu, seed=None):
+def normal_wishart(mu_0, lamb, W, nu, seed=None):
     """Function extracting a Normal_Wishart random variable"""
     # first draw a Wishart distribution:
     Lambda = wishart(df=nu, scale=W, seed=seed).rvs()  # NB: Lambda is a matrix.
@@ -324,13 +322,15 @@ def read_correspondence_list(filename):
         corr_list.append(np.int(line))
     return corr_list
 
-class myBPMF():
+
+class MyBPMF:
     def __init__(self):
         # posterior of next X and Y
         self.method = "BPMF"
 
-    def ParallelBPMF(self, R, R_test, U_in, V_in, T, D, initial_cutoff, lowest_rating, highest_rating, in_alpha, output_file,
-             mu_0=None, Beta_0=None, W_0=None, nu_0=None, missing_mask = -1, save_file=True):
+    def parallel_bpmf(self, R, R_test, U_in, V_in, T, D, initial_cutoff,
+                      lowest_rating, highest_rating, in_alpha, output_file,
+                      mu_0=None, Beta_0=None, W_0=None, nu_0=None, missing_mask=-1, save_file=True):
         """
         R is the ranking matrix (NxM, N=#users, M=#movies); we are assuming that R[i,j]=0 means that user i has not ranked movie j
         R_test is the ranking matrix that contains test values. Same assumption as above.
@@ -412,7 +412,7 @@ class myBPMF():
         nu_0_star = nu_0 + N
         W_0_inv = np.linalg.inv(W_0)  # compute the inverse once and for all
 
-        def SampleUser(i, inV, inMu_U, inLambda_U):
+        def sample_user(i, inV, inMu_U, inLambda_U):
             Lambda_U_2 = np.zeros((D, D))  # second term in the construction of Lambda_U
             mu_i_star_1 = np.zeros(D)  # first piece of mu_i_star
             for j in range(M):  # loop over the movies
@@ -422,19 +422,20 @@ class myBPMF():
                     # Lambda_U_2 = Lambda_U_2 + npdot(nptranspose(np.array(inV[:, j], ndmin=2)),
                     #                                  np.array((inV[:, j]), ndmin=2))  # CHECK
                     mu_i_star_1 = inV[:, j] * R[i, j] + mu_i_star_1  # CHECK DIMENSIONALITY!!!!!!!!!!!!
-                    # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  #CHECK DIMENSIONALITY!!!!!!!!!!!!
+                    # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  # CHECK DIMENSIONALITY!!!!!!!!!!!!
 
             Lambda_i_star_U = inLambda_U + alpha * Lambda_U_2
             Lambda_i_star_U_inv = np.linalg.inv(Lambda_i_star_U)
 
-            ###CAREFUL!! Multiplication matrix times a row vector!! It should give as an output a row vector as for how it works
+            # CAREFUL!! Multiplication matrix times a row vector!!
+            # It should give as an output a row vector as for how it works
             mu_i_star_part = alpha * mu_i_star_1 + np.dot(inLambda_U, inMu_U)
             mu_i_star = np.dot(Lambda_i_star_U_inv, mu_i_star_part)
             output = multivariate_normal(mu_i_star, Lambda_i_star_U_inv)
 
             return output
 
-        def SampleFeature(input_U_new, j, inMu_V, inLambda_V):
+        def sample_feature(input_U_new, j, inMu_V, inLambda_V):
             Lambda_V_2 = np.zeros((D, D))  # second term in the construction of Lambda_U
             mu_i_star_1 = np.zeros(D)  # first piece of mu_i_star
             for i in range(N):  # loop over the movies
@@ -444,7 +445,7 @@ class myBPMF():
                     # Lambda_V_2 = Lambda_V_2 + npdot(np.transpose(np.array(input_U_new[:, i], ndmin=2)),
                     #                                  np.array((input_U_new[:, i]), ndmin=2))
                     mu_i_star_1 = input_U_new[:, i] * R[i, j] + mu_i_star_1  # CHECK DIMENSIONALITY!!!!!!!!!!!!
-                    # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  #CHECK DIMENSIONALITY!!!!!!!!!!!!
+                    # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  # CHECK DIMENSIONALITY!!!!!!!!!!!!
 
             Lambda_j_star_V = inLambda_V + alpha * Lambda_V_2
             Lambda_j_star_V_inv = np.linalg.inv(Lambda_j_star_V)
@@ -461,7 +462,8 @@ class myBPMF():
 
         for t in range(T):
             # print("Step ", t)
-            # FIRST SAMPLE THE HYPERPARAMETERS, conditioned on the present step user and movie feature matrices U_t and V_t:
+            # FIRST SAMPLE THE HYPERPARAMETERS,
+            # conditioned on the present step user and movie feature matrices U_t and V_t:
 
             # movie hyperparameters:
             V_average = np.sum(V_old, axis=1) / N  # in this way it is a 1d array!!
@@ -469,26 +471,30 @@ class myBPMF():
             # S_bar_V = npdot(V_old, np.transpose(V_old)) / N
 
             mu_0_star_V = (Beta_0 * mu_0 + N * V_average) / (Beta_0 + N)
-            W_0_star_V_inv = W_0_inv + N * S_bar_V + Beta_0 * N / (Beta_0 + N) * np.dot(np.transpose(np.array(mu_0 - V_average, ndmin=2)), np.array((mu_0 - V_average), ndmin=2))
+            W_0_star_V_inv = W_0_inv + N * S_bar_V + Beta_0 * N / (Beta_0 + N) \
+                * np.dot(np.transpose(np.array(mu_0 - V_average, ndmin=2)),
+                         np.array((mu_0 - V_average), ndmin=2))
             # W_0_star_V_inv = W_0_inv + N * S_bar_V + Beta_0 * N / (Beta_0 + N) * npdot(
             #     np.transpose(np.array(mu_0 - V_average, ndmin=2)), np.array((mu_0 - V_average), ndmin=2))
             W_0_star_V = np.linalg.inv(W_0_star_V_inv)
             # W_0_star_V = nplinalginv(W_0_star_V_inv)
-            mu_V, Lambda_V, cov_V = Normal_Wishart(mu_0_star_V, Beta_0_star, W_0_star_V, nu_0_star, seed=None)
+            mu_V, Lambda_V, cov_V = normal_wishart(mu_0_star_V, Beta_0_star, W_0_star_V, nu_0_star, seed=None)
 
             # user hyperparameters
-            # U_average=np.transpose(np.array(np.sum(U_old, axis=1)/N, ndmin=2)) #the np.array and np.transpose are needed for it to be a column vector
+            # the np.array and np.transpose are needed for it to be a column vector
+            # U_average = np.transpose(np.array(np.sum(U_old, axis=1)/N, ndmin=2))
             U_average = np.sum(U_old, axis=1) / N  # in this way it is a 1d array!!  #D-long
             S_bar_U = np.dot(U_old, np.transpose(U_old)) / N  # CHECK IF THIS IS RIGHT! #it is DxD
             # S_bar_U = npdot(U_old, np.transpose(U_old)) / N  # CHECK IF THIS IS RIGHT! #it is DxD
 
             mu_0_star_U = (Beta_0 * mu_0 + N * U_average) / (Beta_0 + N)
-            W_0_star_U_inv = W_0_inv + N * S_bar_U + Beta_0 * N / (Beta_0 + N) * np.dot(np.transpose(np.array(mu_0 - U_average, ndmin=2)), np.array((mu_0 - U_average), ndmin=2))
+            W_0_star_U_inv = W_0_inv + N * S_bar_U + Beta_0 * N / (Beta_0 + N) * np.dot(
+                np.transpose(np.array(mu_0 - U_average, ndmin=2)), np.array((mu_0 - U_average), ndmin=2))
             W_0_star_U = np.linalg.inv(W_0_star_U_inv)
             # W_0_star_U_inv = W_0_inv + N * S_bar_U + Beta_0 * N / (Beta_0 + N) * npdot(
             #     np.transpose(np.array(mu_0 - U_average, ndmin=2)), np.array((mu_0 - U_average), ndmin=2))
             # W_0_star_U = nplinalginv(W_0_star_U_inv)
-            mu_U, Lambda_U, cov_U = Normal_Wishart(mu_0_star_U, Beta_0_star, W_0_star_U, nu_0_star, seed=None)
+            mu_U, Lambda_U, cov_U = normal_wishart(mu_0_star_U, Beta_0_star, W_0_star_U, nu_0_star, seed=None)
 
             # print (S_bar_U.shape, S_bar_V.shape)
             # print (np.dot(np.transpose(np.array(mu_0-U_average, ndmin=2)),np.array((mu_0-U_average), ndmin=2).shape))
@@ -499,15 +505,17 @@ class myBPMF():
             # V_new = np.array([])
 
             # num_cores = multiprocessing.cpu_count() - 2
-            # resultsU, mu_U, lam_U_inv = zip(*Parallel(n_jobs=num_cores)(delayed(SampleUser)(i, V_old, mu_U, Lambda_U) for i in range(N)))
+            # resultsU, mu_U, lam_U_inv = \
+            #     zip(*Parallel(n_jobs=num_cores)(delayed(SampleUser)(i, V_old, mu_U, Lambda_U) for i in range(N)))
             # U_new = np.transpose(np.reshape(resultsU, (N, D)))
-            # resultsV, mu_V, lam_V_inv = zip(*Parallel(n_jobs=num_cores)(delayed(SampleFeature)(U_new,j, mu_V, Lambda_V) for j in range(M)))
+            # resultsV, mu_V, lam_V_inv = \
+            #     zip(*Parallel(n_jobs=num_cores)(delayed(SampleFeature)(U_new,j, mu_V, Lambda_V) for j in range(M)))
             # V_new = np.transpose(np.reshape(resultsV, (M, D)))
 
             num_cores = multiprocessing.cpu_count() - 2
-            resultsU = Parallel(n_jobs=num_cores)(delayed(SampleUser)(i, V_old, mu_U, Lambda_U) for i in range(N))
+            resultsU = Parallel(n_jobs=num_cores)(delayed(sample_user)(i, V_old, mu_U, Lambda_U) for i in range(N))
             U_new = np.transpose(np.reshape(resultsU, (N, D)))
-            resultsV = Parallel(n_jobs=num_cores)(delayed(SampleFeature)(U_new,j, mu_V, Lambda_V) for j in range(M))
+            resultsV = Parallel(n_jobs=num_cores)(delayed(sample_feature)(U_new, j, mu_V, Lambda_V) for j in range(M))
             V_new = np.transpose(np.reshape(resultsV, (M, D)))
 
             # resultsU = []
@@ -531,12 +539,13 @@ class myBPMF():
             #             Lambda_U_2 = Lambda_U_2 + np.dot(np.transpose(np.array(V_old[:, j], ndmin=2)),
             #                                              np.array((V_old[:, j]), ndmin=2))  # CHECK
             #             mu_i_star_1 = V_old[:, j] * R[i, j] + mu_i_star_1  # CHECK DIMENSIONALITY!!!!!!!!!!!!
-            #             # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  #CHECK DIMENSIONALITY!!!!!!!!!!!!
+            #             # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  # CHECK DIMENSIONALITY!!!!!!!
             #
             #     Lambda_i_star_U = Lambda_U + alpha * Lambda_U_2
             #     Lambda_i_star_U_inv = np.linalg.inv(Lambda_i_star_U)
             #
-            #     ###CAREFUL!! Multiplication matrix times a row vector!! It should give as an output a row vector as for how it works
+            #     ###CAREFUL!! Multiplication matrix times a row vector!!
+            #     It should give as an output a row vector as for how it works
             #     mu_i_star_part = alpha * mu_i_star_1 + np.dot(Lambda_U, mu_U)
             #     mu_i_star = np.dot(Lambda_i_star_U_inv, mu_i_star_part)
             #     # extract now the U values!
@@ -556,7 +565,7 @@ class myBPMF():
             #             Lambda_V_2 = Lambda_V_2 + np.dot(np.transpose(np.array(U_new[:, i], ndmin=2)),
             #                                              np.array((U_new[:, i]), ndmin=2))
             #             mu_i_star_1 = U_new[:, i] * R[i, j] + mu_i_star_1  # CHECK DIMENSIONALITY!!!!!!!!!!!!
-            #             # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  #CHECK DIMENSIONALITY!!!!!!!!!!!!
+            #             # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  #CHECK DIMENSIONALITY!!!!!!!!
             #
             #     Lambda_j_star_V = Lambda_V + alpha * Lambda_V_2
             #     Lambda_j_star_V_inv = np.linalg.inv(Lambda_j_star_V)
@@ -576,7 +585,7 @@ class myBPMF():
             # print (V_new.shape, U_new.shape)
 
             if t > initial_cutoff:  # initial_cutoff is needed to discard the initial transient
-                R_step = np.dot(np.transpose(U_new), V_new) # RECONSTRUCT R from U and V
+                R_step = np.dot(np.transpose(U_new), V_new)  # RECONSTRUCT R from U and V
                 R_step = np.clip(R_step, 0, 1)
                 # for i in range(N):  # reduce all the predictions to the correct ratings range.
                 #     for j in range(M):
@@ -612,7 +621,8 @@ class myBPMF():
                 #
                 # # row = pd.DataFrame.from_items([('step', t), ('train_err', train_err), ('test_err', test_err)])
                 # # results = results.append(row)  # save results at every iteration:
-                # results = pd.DataFrame.from_items([('step', train_epoch_list), ('train_err', train_err_list), ('test_err', test_err_list)])
+                # results = pd.DataFrame.from_items(
+                #     [('step', train_epoch_list), ('train_err', train_err_list), ('test_err', test_err_list)])
                 # if save_file:
                 #     results.to_csv(output_file)
         # for test in range(40):
@@ -629,10 +639,12 @@ class myBPMF():
         V_in = V_new
         return R_predict, train_err_list
 
-    def BPMF(self, R, R_test, U_in, V_in, T, D, initial_cutoff, lowest_rating, highest_rating, in_alpha, output_file,
-             mu_0=None, Beta_0=None, W_0=None, nu_0=None, missing_mask = -1, save_file=True):
+    def bpmf(self, R, R_test, U_in, V_in, T, D, initial_cutoff,
+             lowest_rating, highest_rating, in_alpha, output_file,
+             mu_0=None, Beta_0=None, W_0=None, nu_0=None, missing_mask=-1, save_file=True):
         """
-        R is the ranking matrix (NxM, N=#users, M=#movies); we are assuming that R[i,j]=0 means that user i has not ranked movie j
+        R is the ranking matrix (NxM, N=#users, M=#movies);
+        we are assuming that R[i,j]=0 means that user i has not ranked movie j
         R_test is the ranking matrix that contains test values. Same assumption as above.
         U_in, V_in are the initial values for the MCMC procedure.
         T is the number of steps.
@@ -645,7 +657,8 @@ class myBPMF():
 
         U matrices are DxN, while V matrices are DxM.
 
-        If save_file=True, this function internally saves the file at each iteration; this results in a different file for each value
+        If save_file=True, this function internally saves the file at each iteration;
+        this results in a different file for each value
         of D and is useful when the algorithm may stop during the execution.
         """
 
@@ -664,7 +677,6 @@ class myBPMF():
         V_old = np.array(V_in)
 
         train_err_list = []
-
 
         # initialize now the hierarchical priors:
         alpha = in_alpha  # observation noise, they put it = 2 in the paper
@@ -688,7 +700,7 @@ class myBPMF():
         nu_0_star = nu_0 + N
         W_0_inv = np.linalg.inv(W_0)  # compute the inverse once and for all
 
-        def SampleUser(i, inV, inMu_U, inLambda_U):
+        def sample_user(i, inV, inMu_U, inLambda_U):
             Lambda_U_2 = np.zeros((D, D))  # second term in the construction of Lambda_U
             mu_i_star_1 = np.zeros(D)  # first piece of mu_i_star
             for j in range(M):  # loop over the movies
@@ -703,14 +715,15 @@ class myBPMF():
             Lambda_i_star_U = inLambda_U + alpha * Lambda_U_2
             Lambda_i_star_U_inv = np.linalg.inv(Lambda_i_star_U)
 
-            ###CAREFUL!! Multiplication matrix times a row vector!! It should give as an output a row vector as for how it works
+            # CAREFUL!! Multiplication matrix times a row vector!!
+            # It should give as an output a row vector as for how it works
             mu_i_star_part = alpha * mu_i_star_1 + np.dot(inLambda_U, inMu_U)
             mu_i_star = np.dot(Lambda_i_star_U_inv, mu_i_star_part)
             output = multivariate_normal(mu_i_star, Lambda_i_star_U_inv)
 
             return output
 
-        def SampleFeature(input_U_new, j, inMu_V, inLambda_V):
+        def sample_feature(input_U_new, j, inMu_V, inLambda_V):
             Lambda_V_2 = np.zeros((D, D))  # second term in the construction of Lambda_U
             mu_i_star_1 = np.zeros(D)  # first piece of mu_i_star
             for i in range(N):  # loop over the movies
@@ -737,7 +750,8 @@ class myBPMF():
 
         for t in range(T):
             # print("Step ", t)
-            # FIRST SAMPLE THE HYPERPARAMETERS, conditioned on the present step user and movie feature matrices U_t and V_t:
+            # FIRST SAMPLE THE HYPERPARAMETERS
+            # conditioned on the present step user and movie feature matrices U_t and V_t:
 
             # movie hyperparameters:
             V_average = np.sum(V_old, axis=1) / N  # in this way it is a 1d array!!
@@ -745,26 +759,29 @@ class myBPMF():
             # S_bar_V = npdot(V_old, np.transpose(V_old)) / N
 
             mu_0_star_V = (Beta_0 * mu_0 + N * V_average) / (Beta_0 + N)
-            W_0_star_V_inv = W_0_inv + N * S_bar_V + Beta_0 * N / (Beta_0 + N) * np.dot(np.transpose(np.array(mu_0 - V_average, ndmin=2)), np.array((mu_0 - V_average), ndmin=2))
+            W_0_star_V_inv = W_0_inv + N * S_bar_V + Beta_0 * N / (Beta_0 + N) * np.dot(
+                np.transpose(np.array(mu_0 - V_average, ndmin=2)), np.array((mu_0 - V_average), ndmin=2))
             # W_0_star_V_inv = W_0_inv + N * S_bar_V + Beta_0 * N / (Beta_0 + N) * npdot(
             #     np.transpose(np.array(mu_0 - V_average, ndmin=2)), np.array((mu_0 - V_average), ndmin=2))
             W_0_star_V = np.linalg.inv(W_0_star_V_inv)
             # W_0_star_V = nplinalginv(W_0_star_V_inv)
-            mu_V, Lambda_V, cov_V = Normal_Wishart(mu_0_star_V, Beta_0_star, W_0_star_V, nu_0_star, seed=None)
+            mu_V, Lambda_V, cov_V = normal_wishart(mu_0_star_V, Beta_0_star, W_0_star_V, nu_0_star, seed=None)
 
             # user hyperparameters
-            # U_average=np.transpose(np.array(np.sum(U_old, axis=1)/N, ndmin=2)) #the np.array and np.transpose are needed for it to be a column vector
+            # the np.array and np.transpose are needed for it to be a column vector
+            # U_average=np.transpose(np.array(np.sum(U_old, axis=1)/N, ndmin=2))
             U_average = np.sum(U_old, axis=1) / N  # in this way it is a 1d array!!  #D-long
             S_bar_U = np.dot(U_old, np.transpose(U_old)) / N  # CHECK IF THIS IS RIGHT! #it is DxD
             # S_bar_U = npdot(U_old, np.transpose(U_old)) / N  # CHECK IF THIS IS RIGHT! #it is DxD
 
             mu_0_star_U = (Beta_0 * mu_0 + N * U_average) / (Beta_0 + N)
-            W_0_star_U_inv = W_0_inv + N * S_bar_U + Beta_0 * N / (Beta_0 + N) * np.dot(np.transpose(np.array(mu_0 - U_average, ndmin=2)), np.array((mu_0 - U_average), ndmin=2))
+            W_0_star_U_inv = W_0_inv + N * S_bar_U + Beta_0 * N / (Beta_0 + N) * np.dot(
+                np.transpose(np.array(mu_0 - U_average, ndmin=2)), np.array((mu_0 - U_average), ndmin=2))
             W_0_star_U = np.linalg.inv(W_0_star_U_inv)
             # W_0_star_U_inv = W_0_inv + N * S_bar_U + Beta_0 * N / (Beta_0 + N) * npdot(
             #     np.transpose(np.array(mu_0 - U_average, ndmin=2)), np.array((mu_0 - U_average), ndmin=2))
             # W_0_star_U = nplinalginv(W_0_star_U_inv)
-            mu_U, Lambda_U, cov_U = Normal_Wishart(mu_0_star_U, Beta_0_star, W_0_star_U, nu_0_star, seed=None)
+            mu_U, Lambda_U, cov_U = normal_wishart(mu_0_star_U, Beta_0_star, W_0_star_U, nu_0_star, seed=None)
 
             # print (S_bar_U.shape, S_bar_V.shape)
             # print (np.dot(np.transpose(np.array(mu_0-U_average, ndmin=2)),np.array((mu_0-U_average), ndmin=2).shape))
@@ -801,12 +818,13 @@ class myBPMF():
                         Lambda_U_2 = Lambda_U_2 + np.dot(np.transpose(np.array(V_old[:, j], ndmin=2)),
                                                          np.array((V_old[:, j]), ndmin=2))  # CHECK
                         mu_i_star_1 = V_old[:, j] * R[i, j] + mu_i_star_1  # CHECK DIMENSIONALITY!!!!!!!!!!!!
-                        # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  #CHECK DIMENSIONALITY!!!!!!!!!!!!
+                        # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  #CHECK DIMENSIONALITY!!!!!!!!!!
 
                 Lambda_i_star_U = Lambda_U + alpha * Lambda_U_2
                 Lambda_i_star_U_inv = np.linalg.inv(Lambda_i_star_U)
 
-                ###CAREFUL!! Multiplication matrix times a row vector!! It should give as an output a row vector as for how it works
+                # CAREFUL!! Multiplication matrix times a row vector!!
+                # It should give as an output a row vector as for how it works
                 mu_i_star_part = alpha * mu_i_star_1 + np.dot(Lambda_U, mu_U)
                 mu_i_star = np.dot(Lambda_i_star_U_inv, mu_i_star_part)
                 # extract now the U values!
@@ -826,7 +844,7 @@ class myBPMF():
                         Lambda_V_2 = Lambda_V_2 + np.dot(np.transpose(np.array(U_new[:, i], ndmin=2)),
                                                          np.array((U_new[:, i]), ndmin=2))
                         mu_i_star_1 = U_new[:, i] * R[i, j] + mu_i_star_1  # CHECK DIMENSIONALITY!!!!!!!!!!!!
-                        # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  #CHECK DIMENSIONALITY!!!!!!!!!!!!
+                        # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  #CHECK DIMENSIONALITY!!!!!!!!!!
 
                 Lambda_j_star_V = Lambda_V + alpha * Lambda_V_2
                 Lambda_j_star_V_inv = np.linalg.inv(Lambda_j_star_V)
@@ -846,7 +864,7 @@ class myBPMF():
             # print (V_new.shape, U_new.shape)
 
             if t > initial_cutoff:  # initial_cutoff is needed to discard the initial transient
-                R_step = np.dot(np.transpose(U_new), V_new) # RECONSTRUCT R from U and V
+                R_step = np.dot(np.transpose(U_new), V_new)  # RECONSTRUCT R from U and V
                 R_step = np.clip(R_step, 0, 1)
                 # for i in range(N):  # reduce all the predictions to the correct ratings range.
                 #     for j in range(M):
@@ -885,10 +903,13 @@ class myBPMF():
         V_in = V_new
         return R_predict, train_err_list
 
-    def ProposedBPMF(self, R, R_test, U_in, V_in, T, D, initial_cutoff, lowest_rating, highest_rating, in_alpha, numSamples, output_file,
-             mu_0=None, Beta_0=None, W_0=None, nu_0=None, missing_mask = -1, save_file=True):
+    def proposed_bpmf(self, R, R_test, U_in, V_in, T, D, initial_cutoff,
+                      lowest_rating, highest_rating, in_alpha,
+                      numSamples, output_file,
+                      mu_0=None, Beta_0=None, W_0=None, nu_0=None, missing_mask=-1, save_file=True):
         """
-        R is the ranking matrix (NxM, N=#users, M=#movies); we are assuming that R[i,j]=0 means that user i has not ranked movie j
+        R is the ranking matrix (NxM, N=#users, M=#movies);
+        we are assuming that R[i,j]=0 means that user i has not ranked movie j
         R_test is the ranking matrix that contains test values. Same assumption as above.
         U_in, V_in are the initial values for the MCMC procedure.
         T is the number of steps.
@@ -901,7 +922,8 @@ class myBPMF():
 
         U matrices are DxN, while V matrices are DxM.
 
-        If save_file=True, this function internally saves the file at each iteration; this results in a different file for each value
+        If save_file=True, this function internally saves the file at each iteration;
+        this results in a different file for each value
         of D and is useful when the algorithm may stop during the execution.
         """
 
@@ -920,7 +942,6 @@ class myBPMF():
         V_old = np.array(V_in)
 
         train_err_list = []
-
 
         # initialize now the hierarchical priors:
         alpha = in_alpha  # observation noise, they put it = 2 in the paper
@@ -949,27 +970,31 @@ class myBPMF():
 
         for t in range(T):
             # print("Step ", t)
-            # FIRST SAMPLE THE HYPERPARAMETERS, conditioned on the present step user and movie feature matrices U_t and V_t:
+            # FIRST SAMPLE THE HYPERPARAMETERS
+            # conditioned on the present step user and movie feature matrices U_t and V_t:
 
             # movie hyperparameters:
             V_average = np.sum(V_old, axis=1) / N  # in this way it is a 1d array!!
             S_bar_V = np.dot(V_old, np.transpose(V_old)) / N
 
             mu_0_star_V = (Beta_0 * mu_0 + N * V_average) / (Beta_0 + N)
-            W_0_star_V_inv = W_0_inv + N * S_bar_V + Beta_0 * N / (Beta_0 + N) * np.dot(np.transpose(np.array(mu_0 - V_average, ndmin=2)), np.array((mu_0 - V_average), ndmin=2))
+            W_0_star_V_inv = W_0_inv + N * S_bar_V + Beta_0 * N / (Beta_0 + N) * np.dot(
+                np.transpose(np.array(mu_0 - V_average, ndmin=2)), np.array((mu_0 - V_average), ndmin=2))
             W_0_star_V = np.linalg.inv(W_0_star_V_inv)
-            mu_V, Lambda_V, cov_V = Normal_Wishart(mu_0_star_V, Beta_0_star, W_0_star_V, nu_0_star, seed=None)
+            mu_V, Lambda_V, cov_V = normal_wishart(mu_0_star_V, Beta_0_star, W_0_star_V, nu_0_star, seed=None)
 
             # user hyperparameters
-            # U_average=np.transpose(np.array(np.sum(U_old, axis=1)/N, ndmin=2)) #the np.array and np.transpose are needed for it to be a column vector
+            # U_average=np.transpose(np.array(np.sum(U_old, axis=1)/N, ndmin=2))
+            # the np.array and np.transpose are needed for it to be a column vector
             U_average = np.sum(U_old, axis=1) / N  # in this way it is a 1d array!!  #D-long
             S_bar_U = np.dot(U_old, np.transpose(U_old)) / N  # CHECK IF THIS IS RIGHT! #it is DxD
             # S_bar_U = npdot(U_old, np.transpose(U_old)) / N  # CHECK IF THIS IS RIGHT! #it is DxD
 
             mu_0_star_U = (Beta_0 * mu_0 + N * U_average) / (Beta_0 + N)
-            W_0_star_U_inv = W_0_inv + N * S_bar_U + Beta_0 * N / (Beta_0 + N) * np.dot(np.transpose(np.array(mu_0 - U_average, ndmin=2)), np.array((mu_0 - U_average), ndmin=2))
+            W_0_star_U_inv = W_0_inv + N * S_bar_U + Beta_0 * N / (Beta_0 + N) * np.dot(
+                np.transpose(np.array(mu_0 - U_average, ndmin=2)), np.array((mu_0 - U_average), ndmin=2))
             W_0_star_U = np.linalg.inv(W_0_star_U_inv)
-            mu_U, Lambda_U, cov_U = Normal_Wishart(mu_0_star_U, Beta_0_star, W_0_star_U, nu_0_star, seed=None)
+            mu_U, Lambda_U, cov_U = normal_wishart(mu_0_star_U, Beta_0_star, W_0_star_U, nu_0_star, seed=None)
 
             """SAMPLE THEN USER FEATURES (possibly in parallel):"""
 
@@ -985,12 +1010,13 @@ class myBPMF():
                         Lambda_U_2 = Lambda_U_2 + np.dot(np.transpose(np.array(V_old[:, j], ndmin=2)),
                                                          np.array((V_old[:, j]), ndmin=2))  # CHECK
                         mu_i_star_1 = V_old[:, j] * R[i, j] + mu_i_star_1  # CHECK DIMENSIONALITY!!!!!!!!!!!!
-                        # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  #CHECK DIMENSIONALITY!!!!!!!!!!!!
+                        # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  #CHECK DIMENSIONALITY!!!!!!!!!!
 
                 Lambda_i_star_U = Lambda_U + alpha * Lambda_U_2
                 Lambda_i_star_U_inv = np.linalg.inv(Lambda_i_star_U)
 
-                ###CAREFUL!! Multiplication matrix times a row vector!! It should give as an output a row vector as for how it works
+                # CAREFUL!! Multiplication matrix times a row vector!!
+                # It should give as an output a row vector as for how it works
                 mu_i_star_part = alpha * mu_i_star_1 + np.dot(Lambda_U, mu_U)
                 mu_i_star = np.dot(Lambda_i_star_U_inv, mu_i_star_part)
                 # extract now the U values!
@@ -1008,7 +1034,7 @@ class myBPMF():
                         Lambda_V_2 = Lambda_V_2 + np.dot(np.transpose(np.array(U_new[:, i], ndmin=2)),
                                                          np.array((U_new[:, i]), ndmin=2))
                         mu_i_star_1 = U_new[:, i] * R[i, j] + mu_i_star_1  # CHECK DIMENSIONALITY!!!!!!!!!!!!
-                        # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  #CHECK DIMENSIONALITY!!!!!!!!!!!!
+                        # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  #CHECK DIMENSIONALITY!!!!!!!!!!
 
                 Lambda_j_star_V = Lambda_V + alpha * Lambda_V_2
                 Lambda_j_star_V_inv = np.linalg.inv(Lambda_j_star_V)
@@ -1025,7 +1051,7 @@ class myBPMF():
             V_old = np.array(V_new)
 
             # Sample N new matrix R
-            if t == T-1:
+            if t == T - 1:
                 # print("Sampling!!!!")
                 for ii in range(numSamples):
                     Utmp = np.array([])  # define the new stuff.
@@ -1040,12 +1066,13 @@ class myBPMF():
                                 Lambda_U_2 = Lambda_U_2 + np.dot(np.transpose(np.array(V_old[:, j], ndmin=2)),
                                                                  np.array((V_old[:, j]), ndmin=2))  # CHECK
                                 mu_i_star_1 = V_old[:, j] * R[i, j] + mu_i_star_1  # CHECK DIMENSIONALITY!!!!!!!!!!!!
-                                # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  #CHECK DIMENSIONALITY!!!!!!!!!!!!
+                                # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  # CHECK DIMENSIONALITY!
 
                         Lambda_i_star_U = Lambda_U + alpha * Lambda_U_2
                         Lambda_i_star_U_inv = np.linalg.inv(Lambda_i_star_U)
 
-                        ###CAREFUL!! Multiplication matrix times a row vector!! It should give as an output a row vector as for how it works
+                        # CAREFUL!! Multiplication matrix times a row vector!!
+                        # It should give as an output a row vector as for how it works
                         mu_i_star_part = alpha * mu_i_star_1 + np.dot(Lambda_U, mu_U)
                         mu_i_star = np.dot(Lambda_i_star_U_inv, mu_i_star_part)
                         # extract now the U values!
@@ -1062,7 +1089,7 @@ class myBPMF():
                                 Lambda_V_2 = Lambda_V_2 + np.dot(np.transpose(np.array(Utmp[:, i], ndmin=2)),
                                                                  np.array((Utmp[:, i]), ndmin=2))
                                 mu_i_star_1 = Utmp[:, i] * R[i, j] + mu_i_star_1  # CHECK DIMENSIONALITY!!!!!!!!!!!!
-                                # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  #CHECK DIMENSIONALITY!!!!!!!!!!!!
+                                # coeff=np.transpose(np.array(V_old[j]*R[i,j], ndmin=2))+coeff  #CHECK DIMENSIONALITY!!
 
                         Lambda_j_star_V = Lambda_V + alpha * Lambda_V_2
                         Lambda_j_star_V_inv = np.linalg.inv(Lambda_j_star_V)
@@ -1080,7 +1107,7 @@ class myBPMF():
                     Rs.append(Rpred.tolist())
 
             if t > initial_cutoff:  # initial_cutoff is needed to discard the initial transient
-                R_step = np.dot(np.transpose(U_new), V_new) # RECONSTRUCT R from U and V
+                R_step = np.dot(np.transpose(U_new), V_new)  # RECONSTRUCT R from U and V
                 R_step = np.clip(R_step, 0, 1)
 
                 R_predict = (R_predict * (t - initial_cutoff - 1) + R_step) / (t - initial_cutoff)
